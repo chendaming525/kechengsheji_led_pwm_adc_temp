@@ -1,0 +1,33 @@
+QWidget#root { background: #0f1c2d; color: #eaf2ff; }
+QWidget { background: transparent; color: #eaf2ff; font-family: 'Microsoft YaHei'; }
+QFrame#card { background: rgba(19, 35, 54, 0.9); border: 1px solid rgba(108, 137, 169, 0.5); border-radius: 12px; }
+QFrame#foodTank { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 34px; }
+QLabel#appTitle { color: #f5f7ff; font-size: 27px; font-weight: 700; }
+QLabel#sectionTitle { color: #f3f4f8; font-size: 18px; font-weight: 600; }
+QLabel#statusText { color: #b9c9e5; font-size: 12px; margin: 0 4px; }
+QLabel#chip, QLabel#statusChip { background: rgba(148, 180, 255, 0.12); color: #dfe9ff; border: 1px solid rgba(160, 188, 255, 0.25); border-radius: 8px; padding: 4px 10px; font-size: 11px; }
+QLabel#hintLabel { color: #a8b8d6; font-size: 11px; }
+QLabel#tipLabel { color: #7d8fae; font-size: 11px; }
+QLabel#tankPercent { color: #f7d28d; font-size: 36px; font-weight: 700; }
+QLabel#stateLabel { color: #d6dcef; font-size: 18px; }
+QLabel#feedCount { color: #8ed9b2; font-size: 18px; font-weight: 600; }
+QLabel#timeLabel { color: #ffffff; font-size: 28px; font-weight: 700; }
+QPushButton { background: rgba(255,255,255,0.06); color: #eef5ff; border: 1px solid rgba(161, 180, 214, 0.45); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+QPushButton:hover { background: rgba(255,255,255,0.10); }
+QPushButton:pressed { background: rgba(255,255,255,0.14); }
+QPushButton#btnApply { background: rgba(67, 112, 255, 0.8); border-color: rgba(139, 167, 255, 0.8); }
+QPushButton#btnPlay { background: #f2a63b; color: #111111; border: 1px solid rgba(255,199,114,0.8); font-weight: 600; }
+QPushButton#chkAuto { background: rgba(255,255,255,0.04); border-color: rgba(140, 158, 196, 0.4); }
+QPushButton#chkAuto:checked { background: rgba(64, 160, 110, 0.8); border-color: rgba(122, 234, 174, 0.8); }
+QProgressBar#adcBar { border: 0; background: rgba(255,255,255,0.08); border-radius: 14px; text-align: center; }
+QProgressBar#adcBar::chunk { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #dba63d, stop:1 #c67b11); border-radius: 14px; }
+QProgressBar#adcBarSmall { border: 0; background: rgba(255,255,255,0.10); border-radius: 9px; }
+QProgressBar#adcBarSmall::chunk { background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #dba63d, stop:1 #c67b11); border-radius: 9px; }
+QSlider#sliderPwm::groove:horizontal { height: 5px; background: rgba(255,255,255,0.12); border-radius: 3px; }
+QSlider#sliderPwm::sub-page:horizontal { background: #dba63d; border-radius: 3px; }
+QSlider#sliderPwm::handle:horizontal { width: 16px; height: 16px; background: #f5f5f5; border: 2px solid #dba63d; border-radius: 8px; margin: -6px 0; }
+QTextEdit#logBox { background: rgba(12,19,29,0.95); color: #d9e6ff; border: 1px solid rgba(116, 136, 163, 0.4); border-radius: 10px; font-family: 'Consolas'; font-size: 11px; }
+
+/* 食盆大进度条(原 m_adcBar 独立 setStyleSheet 样式, 覆盖上面同名规则) */
+QProgressBar#adcBar { border: 0; background: rgba(255,255,255,0.08); border-radius: 22px; }
+QProgressBar#adcBar::chunk { background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 #d9a34a, stop:1 #b97819); border-radius: 22px; }
