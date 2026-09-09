@@ -1,26 +1,34 @@
-# ledcontrol 修改说明
+# ledcontrol 项目说明
 
-本文档记录本轮对项目的主要修改，重点说明 Qt 上位机、FS4412 下位机、TCP 通信协议、下位机音乐播放逻辑，以及源码编码处理。
-
-## 1. 总体架构调整
-
-项目现在按“上位机 + 下位机”的方式理解和组织：
+`ledcontrol` 是一个基于 Qt 的 FS4412 上位机/下位机控制示例项目。项目当前按两个目录组织：
 
 ```text
-Qt 上位机程序
+app/
+  Qt 上位机程序，可以作为独立 Qt 工程打开和运行
+
+sdk/
+  FS4412 下位机程序、Linux 字符设备驱动和参考代码
+```
+
+整体目标是：Qt 上位机负责界面显示和发送控制命令，FS4412 下位机负责采集硬件数据、控制 LED/PWM/蜂鸣器，并通过 TCP 把结果返回给 Qt。
+
+## 1. 总体架构
+
+```text
+Qt 上位机 app/
   负责：界面显示、按钮操作、数据显示、日志输出、发送控制命令、接收下位机数据
 
 TCP 文本协议
   负责：在 Qt 上位机和 FS4412 下位机之间传递字符串命令和状态数据
 
-FS4412 下位机进程 refdoc/tcp_client1.c
+FS4412 下位机 sdk/tcp_client1.c
   负责：连接 Qt 上位机、接收控制命令、采集 ADC/温度/按键、控制 LED/PWM/蜂鸣器
 
-Linux 字符设备驱动
+Linux 字符设备驱动 sdk/fs4412_zh/
   负责：通过 /dev/led、/dev/pwm、/dev/adc、/dev/ds18b20 操作真实硬件
 ```
 
-通信方向如下：
+通信方向：
 
 ```text
 用户点击 Qt 按钮
@@ -35,47 +43,108 @@ FS4412 采集 ADC/温度/按键
   -> Qt 解析字符串并刷新界面
 ```
 
-## 2. Qt 上位机修改
+## 2. 目录说明
 
-### 2.1 增加 Qt Network 模块
+```text
+app/ledcontrol.pro
+  Qt 上位机工程文件
 
-文件：`ledcontrol.pro`
+app/main.cpp
+  Qt 程序入口
 
-修改：
+app/mainwindow.h / app/mainwindow.cpp
+  Qt 界面、TCP Server、按钮逻辑、数据显示逻辑
 
-```pro
-QT += core gui network
+app/hardware.h / app/hardware.cpp
+  硬件配置和本地硬件访问封装，保留模拟/直接 sysfs 访问能力
+
+app/config.ini
+  Qt 上位机配置文件
+
+app/style.qss
+  Qt 界面样式
+
+sdk/tcp_client1.c
+  FS4412 下位机 TCP Client，负责接收上位机命令和返回硬件结果
+
+sdk/fs4412_zh/
+  LED、PWM、ADC 驱动和测试参考代码
 ```
 
-目的：让 Qt 工程可以使用 `QTcpServer`、`QTcpSocket` 等 TCP 网络类。
+## 3. Qt 上位机说明
 
-### 2.2 增加 TCP Server
+`app` 目录可以作为独立 Qt 工程使用，使用 Qt Creator 打开：
 
-文件：`mainwindow.h`、`mainwindow.cpp`
+```text
+app/ledcontrol.pro
+```
 
-新增内容：
-
-- `QTcpServer *m_tcpServer`
-- `QTcpSocket *m_client`
-- `QByteArray m_rxBuffer`
-- `startTcpServer()`
-- `onTcpNewConnection()`
-- `onTcpReadyRead()`
-- `onTcpDisconnected()`
-- `sendCommand()`
-- `handleLowerMessage()`
-
-Qt 上位机启动后监听端口：
+Qt 上位机启动后会监听 TCP 端口：
 
 ```text
 8888
 ```
 
-FS4412 下位机进程 `tcp_client1.c` 会主动连接这个端口。
+相关代码在：
 
-### 2.3 Qt 发送给下位机的命令
+```text
+app/mainwindow.cpp -> startTcpServer()
+app/mainwindow.cpp -> onTcpNewConnection()
+app/mainwindow.cpp -> onTcpReadyRead()
+app/mainwindow.cpp -> handleLowerMessage()
+app/mainwindow.cpp -> sendCommand()
+```
 
-Qt 当前会发送这些文本命令：
+Qt 上位机主要做三件事：
+
+```text
+1. 显示宠物喂食提醒界面
+2. 给下位机发送控制命令
+3. 接收下位机返回的 ADC、温度、按键数据并刷新界面
+```
+
+## 4. FS4412 下位机说明
+
+下位机核心文件：
+
+```text
+sdk/tcp_client1.c
+```
+
+它会主动连接 Qt 上位机：
+
+```c
+#define SERVER_IP "192.168.110.200"
+#define PORT 8888
+```
+
+现场使用时，需要把 `SERVER_IP` 改成 Qt 上位机所在电脑的 IP。
+
+下位机连接成功后，通过全局 socket：
+
+```c
+int sock;
+```
+
+和 Qt 上位机通信。
+
+## 5. TCP 通信协议
+
+本项目使用简单文本协议：
+
+```text
+一条消息 = 一行文本
+```
+
+每条消息末尾使用：
+
+```text
+\n
+```
+
+作为结束符。
+
+### 5.1 Qt 上位机发送给下位机
 
 ```text
 LED_ON
@@ -86,20 +155,21 @@ BUZZER_OFF
 play_music
 ```
 
-说明：
-
-- `LED_ON`：打开 LED
-- `LED_OFF`：关闭 LED
-- `PWM=80`：发送 PWM 百分比命令
-- `BUZZER_FREQ=880`：设置蜂鸣器频率
-- `BUZZER_OFF`：关闭蜂鸣器
-- `play_music`：通知下位机播放内置音乐《两只老虎》
-
-### 2.4 Qt 接收下位机数据
-
-Qt 会解析下位机发来的这些消息：
+含义：
 
 ```text
+LED_ON            打开 LED
+LED_OFF           关闭 LED
+PWM=80            设置 PWM 百分比命令
+BUZZER_FREQ=880   设置蜂鸣器频率
+BUZZER_OFF        关闭蜂鸣器
+play_music        播放内置《两只老虎》旋律
+```
+
+### 5.2 下位机返回给 Qt 上位机
+
+```text
+LED_OFF
 adc=62.50%
 temperature=26.75
 key=k1
@@ -107,167 +177,205 @@ key=k2
 key=k3
 ```
 
-说明：
+含义：
 
-- `adc=xx%`：食盆余量或 ADC 百分比，用来刷新进度条和余量显示
-- `temperature=xx`：温度数据，保留给温度报警逻辑使用
-- `key=k1/k2/k3`：下位机按键事件，可触发 Qt 侧对应动作
+```text
+adc=xx%          ADC 百分比，用来显示食盆余量
+temperature=xx   温度值
+key=k1/k2/k3     下位机按键事件
+```
 
-### 2.5 音乐按钮行为
+## 6. 下位机如何返回硬件结果
 
-真实下位机模式下，Qt 点击“试听喂食提示音乐”时，不再由 Qt 自己循环发送音符，而是只发送一条命令：
+下位机返回硬件结果的核心函数是：
+
+```c
+static void send_line(const char *msg)
+{
+    pthread_mutex_lock(&sock_mutex);
+    write(sock, msg, strlen(msg));
+    write(sock, "\n", 1);
+    pthread_mutex_unlock(&sock_mutex);
+}
+```
+
+它的作用是：
+
+```text
+把一条文本消息发给 Qt 上位机，并在末尾加换行符
+```
+
+三个采集线程最终都会调用 `send_line()`。
+
+### 6.1 按键结果返回
+
+线程：
+
+```c
+void* key_monitor_thread(void* arg)
+```
+
+流程：
+
+```text
+/dev/input/event0
+  -> read()
+  -> 判断按键编号
+  -> 组装 "key=k1"
+  -> send_line()
+  -> Qt 上位机
+```
+
+关键代码：
+
+```c
+case 114: snprintf(msg, sizeof(msg), "key=k1"); break;
+case 115: snprintf(msg, sizeof(msg), "key=k2"); break;
+case 116: snprintf(msg, sizeof(msg), "key=k3"); break;
+send_line(msg);
+```
+
+### 6.2 ADC 结果返回
+
+线程：
+
+```c
+void* adc_send_thread(void* arg)
+```
+
+流程：
+
+```text
+/dev/adc
+  -> read()
+  -> 得到 ADC 原始值
+  -> 换算成百分比
+  -> 组装 "adc=62.50%"
+  -> send_line()
+  -> Qt 上位机
+```
+
+关键代码：
+
+```c
+read(fd, &data, sizeof(data));
+percentage = (float)data / 4096.0 * 100.0;
+snprintf(buffer, sizeof(buffer), "adc=%.2f%%", percentage);
+send_line(buffer);
+```
+
+### 6.3 温度结果返回
+
+线程：
+
+```c
+void* temp_send_thread(void* arg)
+```
+
+流程：
+
+```text
+/dev/ds18b20
+  -> ioctl()
+  -> 得到温度原始值
+  -> 换算成摄氏度
+  -> 组装 "temperature=26.75"
+  -> send_line()
+  -> Qt 上位机
+```
+
+关键代码：
+
+```c
+ioctl(fd, GPIO_ON, temp);
+tempvalue = (float)temp[1] * 0.0625;
+snprintf(buffer, sizeof(buffer), "temperature=%.2f", tempvalue);
+send_line(buffer);
+```
+
+## 7. ioctl 简单理解
+
+Linux 下很多硬件设备会被抽象成文件：
+
+```text
+/dev/led
+/dev/pwm
+/dev/adc
+/dev/ds18b20
+/dev/input/event0
+```
+
+应用程序常用：
+
+```c
+open()
+read()
+write()
+ioctl()
+close()
+```
+
+其中 `ioctl()` 可以理解为：
+
+```text
+应用程序给设备驱动发送特殊控制命令
+```
+
+例如：
+
+```c
+int i = 1;
+ioctl(fd, LED_ON, &i);
+```
+
+意思是：
+
+```text
+告诉 /dev/led 对应的驱动：打开第 1 个 LED
+```
+
+`LED_ON` 的定义类似：
+
+```c
+#define LED_ON _IOW(LED_MAGIC, 0, int)
+```
+
+可以理解为生成一个 ioctl 命令编号：
+
+```text
+LED_MAGIC   设备类别暗号
+0           该设备里的第 0 号命令
+int         这个命令携带一个 int 参数
+_IOW        方向是应用程序写给驱动
+```
+
+一句话记：
+
+```text
+ioctl = 应用程序和设备驱动之间的“控制命令通道”
+```
+
+## 8. PWM 音乐播放
+
+Qt 上位机点击“试听喂食提示音乐”时，真实下位机模式下会发送：
 
 ```text
 play_music
 ```
 
-实际旋律播放由下位机 `tcp_client1.c` 完成。
-
-## 3. 下位机 tcp_client1.c 修改
-
-文件：`refdoc/tcp_client1.c`
-
-### 3.1 文件编码转换
-
-原文件是 GB2312/GBK 风格保存，已转换为 UTF-8，避免中文注释和日志乱码。
-
-### 3.2 增加 PWM 驱动头文件
-
-原来主要使用 LED 驱动头文件，现在增加了 PWM 驱动相关头文件：
+下位机收到后执行：
 
 ```c
-#include "fs4412_zh/driver_led/fs4412_led.h"
-#include "fs4412_zh/driver_pwm/fs4412_pwm.h"
+play_music();
 ```
 
-目的：下位机进程可以同时使用 LED 和 PWM 的 ioctl 命令。
-
-### 3.3 增加 PWM 设备支持
-
-新增：
-
-```c
-#define PWM_DEVICE "/dev/pwm"
-#define PCLK 0x4200000
-
-int pwm_fd = -1;
-pthread_mutex_t pwm_mutex = PTHREAD_MUTEX_INITIALIZER;
-```
-
-`main()` 中打开 `/dev/pwm`，并初始化 PWM：
-
-```c
-pwm_fd = open(PWM_DEVICE, O_RDWR | O_NONBLOCK);
-ioctl(pwm_fd, PWM_OFF);
-ioctl(pwm_fd, SET_PRE, &pre);
-```
-
-### 3.4 增加统一发送函数
-
-新增：
-
-```c
-static void send_line(const char *msg)
-```
-
-所有发给 Qt 上位机的数据统一变成：
+音乐旋律直接写在：
 
 ```text
-一条消息 + '\n'
+sdk/tcp_client1.c
 ```
 
-这样 Qt 可以按行解析 TCP 数据。
-
-### 3.5 增加命令清理函数
-
-新增：
-
-```c
-static void trim_line(char *s)
-```
-
-作用：去掉 Qt 发来的命令末尾的 `\n`、`\r`。
-
-否则 Qt 发送：
-
-```text
-LED_ON\n
-```
-
-下位机用：
-
-```c
-strcmp(buffer, "LED_ON")
-```
-
-会匹配失败。
-
-### 3.6 修复 recv 缓冲区风险
-
-原来：
-
-```c
-recv(sock, buffer, sizeof(buffer), 0);
-buffer[len] = '\0';
-```
-
-如果刚好收到 1024 字节，`buffer[len]` 会越界。
-
-现在改为：
-
-```c
-recv(sock, buffer, sizeof(buffer) - 1, 0);
-buffer[len] = '\0';
-```
-
-给字符串结束符 `\0` 留出位置。
-
-### 3.7 统一下位机上报协议
-
-按键线程上报：
-
-```text
-key=k1
-key=k2
-key=k3
-```
-
-ADC 线程上报：
-
-```text
-adc=62.50%
-```
-
-温度线程上报：
-
-```text
-temperature=26.75
-```
-
-这些消息都通过 `send_line()` 发送。
-
-### 3.8 增加蜂鸣器频率控制
-
-新增：
-
-```c
-static void buzzer_set_freq(int freq)
-```
-
-逻辑：
-
-- `freq <= 0`：关闭 PWM
-- `freq > 0`：根据频率计算计数值，调用 `SET_CNT`，再打开 PWM
-
-核心计算：
-
-```c
-int cnt = (PCLK / 256 / 4) / freq;
-```
-
-### 3.9 增加内置《两只老虎》旋律
-
-新增结构体：
+核心数据结构：
 
 ```c
 typedef struct {
@@ -276,7 +384,7 @@ typedef struct {
 } MusicNote;
 ```
 
-新增内置旋律数组：
+内置旋律：
 
 ```c
 static const MusicNote twotigers_music[] = {
@@ -285,20 +393,11 @@ static const MusicNote twotigers_music[] = {
 };
 ```
 
-每个音符包含：
-
-- `freq`：频率，单位 Hz
-- `duration_ms`：持续时间，单位毫秒
-
-### 3.10 增加音乐播放线程
-
-新增：
+播放线程：
 
 ```c
 void* play_music_thread(void* arg)
 ```
-
-作用：遍历 `twotigers_music` 数组，逐个播放音符。
 
 播放每个音符时：
 
@@ -309,124 +408,118 @@ buzzer_set_freq(0);
 usleep(30000);
 ```
 
-### 3.11 增加 play_music 命令
+同时使用 `music_playing` 和 `music_mutex` 防止重复播放。
 
-下位机主循环新增识别：
+## 9. Qt 4.8 / C++11 兼容说明
 
-```c
-} else if (strcmp(buffer, "play_music") == 0) {
-    play_music();
-}
-```
-
-当 Qt 上位机发送：
+现场机器使用 Qt 4.8，因此 `app` 中做了兼容调整：
 
 ```text
-play_music
+CONFIG += c++11
+unix: QMAKE_CXXFLAGS += -std=c++11
 ```
 
-下位机会启动线程播放内置《两只老虎》。
-
-### 3.12 防止重复播放
-
-新增：
-
-```c
-int music_playing = 0;
-pthread_mutex_t music_mutex = PTHREAD_MUTEX_INITIALIZER;
-```
-
-配合：
-
-```c
-music_is_playing()
-music_set_playing()
-```
-
-如果音乐正在播放，再收到 `play_music`，会忽略重复触发。
-
-## 4. 音乐配置方案变更
-
-曾经临时新增过外部文件：
+注意：
 
 ```text
-refdoc/twotigers_music.ini
+Qt 4.8 可以配合支持 C++11 的编译器使用，
+但 Qt 4.8 自己不支持很多 Qt5/Qt6 API。
 ```
 
-后续按需求已删除。
-
-现在《两只老虎》的旋律直接写在：
+因此已经避免使用：
 
 ```text
-refdoc/tcp_client1.c
+Qt5 新式 connect
+QOverload
+QSignalBlocker
+QString::toHtmlEscaped()
+nullptr
+override
+QVector 初始化列表赋值
+Qt5 函数指针形式 QTimer::singleShot
 ```
 
-也就是说，下位机运行时不再依赖额外音乐配置文件。
-
-## 5. 当前 TCP 协议汇总
-
-### 5.1 Qt 上位机 -> FS4412 下位机
+对应改法：
 
 ```text
-LED_ON
-LED_OFF
-PWM=80
-BUZZER_FREQ=880
-BUZZER_OFF
-play_music
+connect 改为 SIGNAL/SLOT 宏
+QSignalBlocker 改为自定义 SignalBlocker
+nullptr 改为 0
+默认成员初始化改为构造函数初始化
+QVector 初始化列表改为 clear() + << 写法
+QTimer::singleShot 改为 SLOT(...) 写法
 ```
 
-### 5.2 FS4412 下位机 -> Qt 上位机
+## 10. 编码说明
+
+项目中的中文源码和说明文件已统一检查为 UTF-8。
+
+之前部分参考代码是 GB2312/GBK 风格保存，已经转换为 UTF-8，避免中文注释和日志乱码。
+
+## 11. 编译与运行建议
+
+### 11.1 Qt 上位机
+
+在 Qt Creator 中打开：
 
 ```text
-LED_OFF
-adc=62.50%
-temperature=26.75
-key=k1
-key=k2
-key=k3
+app/ledcontrol.pro
 ```
 
-协议特点：
+如果只做界面演示，保持：
 
-- 文本协议
-- 一条消息一行
-- 使用 `\n` 作为消息结束符
-- 简单易调试，可以直接用串口日志、网络抓包或 `printf` 查看
-
-## 6. TODO 状态
-
-原来 `refdoc/tcp_client1.c` 中有：
-
-```c
-// ==================   pwm声音播放线程 ==================
-//由你自己完成
+```ini
+[system]
+simulation=1
 ```
 
-现在已经替换为：
-
-```c
-// ================== PWM 声音控制 ==================
-// Qt 上位机发送 play_music, 这里播放内置的《两只老虎》旋律
-```
-
-当前项目中未发现 `TODO` 或 `由你自己完成` 残留。
-
-## 7. 编译验证说明
-
-本次修改已做源码级检查和 UTF-8 编码检查。
-
-当前环境 PATH 中没有可用的：
+如果要和 FS4412 下位机联调，需要保证：
 
 ```text
-qmake
-mingw32-make
-gcc/g++
+1. Qt 上位机所在电脑和 FS4412 在同一网络
+2. 下位机 tcp_client1.c 中 SERVER_IP 改成电脑 IP
+3. Qt 上位机先运行并监听 8888
+4. FS4412 再运行 tcp_client1
 ```
 
-因此没有在本机完成实际编译。后续建议在 Qt Creator 或 FS4412 交叉编译环境中分别验证：
+### 11.2 FS4412 下位机
+
+下位机程序：
 
 ```text
-Qt 上位机：使用 Qt Creator 打开 ledcontrol.pro 编译运行
-下位机：使用交叉编译器编译 refdoc/tcp_client1.c，并放到 FS4412 上运行
+sdk/tcp_client1.c
 ```
+
+需要在 FS4412 对应交叉编译环境中编译，并确保设备节点存在：
+
+```text
+/dev/led
+/dev/pwm
+/dev/adc
+/dev/ds18b20
+/dev/input/event0
+```
+
+## 12. 当前状态
+
+```text
+app/ 可以作为 Qt 上位机工程独立打开
+sdk/ 保存下位机进程和驱动参考代码
+TCP 协议已统一为一行一条文本消息
+下位机可返回按键、ADC、温度数据
+Qt 可发送 LED、PWM、蜂鸣器、播放音乐命令
+play_music 会触发下位机播放内置《两只老虎》
+项目中未发现 TODO 或“由你自己完成”残留
+```
+
+## 13. Qt 版本更新参考
+
+当前 `app/` 已按 Qt 4.8 + C++11 做过兼容处理。现场如果 Qt 4.8 编译仍然遇到环境问题，或者希望改回更现代的 Qt5 写法，可以考虑升级 Qt 版本。
+
+Qt 官方历史版本下载地址：
+
+```text
+https://download.qt.io/archive/qt/
+```
+
+建议现场先尝试使用现有 Qt 4.8 编译；如果需要升级，再优先选择 Qt 5.x 的稳定版本。
