@@ -346,12 +346,6 @@ if (pthread_create(&temp_thread, NULL, temp_send_thread, NULL) != 0) {
             int i = 1;
             ioctl(fd,LED_OFF, &i); // 关灯
             printf("设置 LED 为 OFF\n");
-        } else if (strncmp(buffer, "PWM=", 4) == 0) {
-            int percent = atoi(buffer + 4);
-            printf("收到 PWM 亮度命令: %d%%\n", percent);
-            // 当前参考 LED 驱动是 GPIO 灯, 这里先把 0 视为关灯, 大于 0 视为开灯。
-            int i = 1;
-            ioctl(fd, percent > 0 ? LED_ON : LED_OFF, &i);
         } else if (strncmp(buffer, "BUZZER_FREQ=", 12) == 0) {
             int freq = atoi(buffer + 12);
             buzzer_set_freq(freq);

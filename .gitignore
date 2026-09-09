@@ -1,0 +1,61 @@
+# Qt build output (keep source Makefiles under sdk/)
+/app/build/
+/app/debug/
+/app/release/
+/build-*/
+/app/build-*/
+/app/Makefile
+/app/Makefile.Debug
+/app/Makefile.Release
+/app/Makefile.*.Debug
+/app/Makefile.*.Release
+.qmake.stash
+.qmake.cache
+moc_*.cpp
+moc_predefs.h
+ui_*.h
+qrc_*.cpp
+*.o
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.idb
+
+# Qt Creator local settings and code index
+*.pro.user
+*.pro.user.*
+*.qws
+.qtc_clangd/
+.cache/clangd/
+
+# Linux kernel module build output
+*.ko
+*.mod
+*.mod.c
+*.mod.o
+.*.cmd
+*.o.d
+Module.symvers
+modules.order
+.tmp_versions/
+
+# Board application and driver test executables
+/sdk/tcp_client
+/sdk/tcp_client1
+/sdk/fs4412_zh/zh_test
+/sdk/fs4412_zh/driver_*/test_led
+/sdk/fs4412_zh/driver_*/test_pwm
+/sdk/fs4412_zh/driver_*/test_adc
+
+# Runtime logs and local SDK export
+*.log
+/sdk.7z
+
+# Editor and OS temporary files
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini

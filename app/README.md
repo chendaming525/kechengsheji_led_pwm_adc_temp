@@ -80,7 +80,6 @@ Qt 当前会发送这些文本命令：
 ```text
 LED_ON
 LED_OFF
-PWM=80
 BUZZER_FREQ=880
 BUZZER_OFF
 play_music
@@ -90,7 +89,6 @@ play_music
 
 - `LED_ON`：打开 LED
 - `LED_OFF`：关闭 LED
-- `PWM=80`：发送 PWM 百分比命令
 - `BUZZER_FREQ=880`：设置蜂鸣器频率
 - `BUZZER_OFF`：关闭蜂鸣器
 - `play_music`：通知下位机播放内置音乐《两只老虎》
@@ -370,7 +368,6 @@ refdoc/tcp_client1.c
 ```text
 LED_ON
 LED_OFF
-PWM=80
 BUZZER_FREQ=880
 BUZZER_OFF
 play_music

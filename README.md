@@ -56,7 +56,7 @@ app/mainwindow.h / app/mainwindow.cpp
   Qt 界面、TCP Server、按钮逻辑、数据显示逻辑
 
 app/hardware.h / app/hardware.cpp
-  硬件配置和本地硬件访问封装，保留模拟/直接 sysfs 访问能力
+  上位机配置读取：运行模式、温度报警阈值/回差和 ADC 满量程；硬件由板端 SDK 控制
 
 app/config.ini
   Qt 上位机配置文件
@@ -149,7 +149,6 @@ int sock;
 ```text
 LED_ON
 LED_OFF
-PWM=80
 BUZZER_FREQ=880
 BUZZER_OFF
 play_music
@@ -160,7 +159,6 @@ play_music
 ```text
 LED_ON            打开 LED
 LED_OFF           关闭 LED
-PWM=80            设置 PWM 百分比命令
 BUZZER_FREQ=880   设置蜂鸣器频率
 BUZZER_OFF        关闭蜂鸣器
 play_music        播放内置《两只老虎》旋律

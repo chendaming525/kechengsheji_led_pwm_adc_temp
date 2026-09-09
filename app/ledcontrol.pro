@@ -6,6 +6,7 @@ CONFIG += c++11
 
 # Qt 4.8 的 qmake 在部分旧环境中不会自动加 C++11 参数, 这里给 g++ 做兜底。
 unix: QMAKE_CXXFLAGS += -std=c++11
+win32-g++*: QMAKE_CXXFLAGS += -std=c++11
 
 TARGET = ledcontrol
 TEMPLATE = app
@@ -20,6 +21,7 @@ SOURCES += \
     hardware.cpp
 
 HEADERS += \
+    feedschedule.h \
     mainwindow.h \
     hardware.h
 
