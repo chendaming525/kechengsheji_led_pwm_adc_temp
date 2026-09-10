@@ -92,6 +92,7 @@ MainWindow::MainWindow(QWidget *parent)
       m_alarming(false),
       m_tempTimer(0),
       m_alarmBlink(0),
+      m_alarmSoundTimer(0),
       m_blinkOn(false),
       m_stateLabel(0),
       m_btnLight(0),
@@ -270,6 +271,10 @@ void MainWindow::buildUi()
     m_alarmBlink->setInterval(500);
     connect(m_alarmBlink, SIGNAL(timeout()), this, SLOT(onAlarmBlink()));
 
+    m_alarmSoundTimer = new QTimer(this);
+    m_alarmSoundTimer->setSingleShot(true);
+    connect(m_alarmSoundTimer, SIGNAL(timeout()), this, SLOT(onAlarmSoundTimeout()));
+
     m_melodyTimer = new QTimer(this);
     m_melodyTimer->setInterval(140);
     connect(m_melodyTimer, SIGNAL(timeout()), this, SLOT(onMelodyTick()));
@@ -376,6 +381,7 @@ void MainWindow::onTcpNewConnection()
         log(QString("<b>[TCP]</b> 下位机已连接: %1:%2")
                 .arg(m_client->peerAddress().toString())
                 .arg(m_client->peerPort()));
+        sendCommand("BUZZER_OFF");
     }
 }
 
@@ -749,8 +755,8 @@ void MainWindow::startAlarm()
         return;
     m_alarming = true;
     m_blinkOn = false;
-    log(QString("<font color='#ff6b6b'><b>[报警]</b> 温度 %1 ℃ 达到阈值, 触发高温报警!</font>")
-            .arg(m_tempNow, 0, 'f', 1));
+    log(QString("<font color='#ff6b6b'><b>[报警]</b> 温度 %1 ℃ 达到阈值, 触发高温报警, 蜂鸣器响 %2 秒</font>")
+            .arg(m_tempNow, 0, 'f', 1).arg(m_cfg.alarmSoundSeconds));
 
     if (m_alarmBanner) {
         m_alarmBanner->setProperty("flash", "false");
@@ -764,6 +770,7 @@ void MainWindow::startAlarm()
     if (m_btnPlay && m_btnPlay->isCheckable())
         m_btnPlay->setEnabled(false);
     startAlarmMelody();
+    m_alarmSoundTimer->start(m_cfg.alarmSoundSeconds * 1000);
 
     // 界面报警横幅闪烁
     m_alarmBlink->start();
@@ -786,10 +793,20 @@ void MainWindow::stopAlarm()
         m_alarmBanner->style()->polish(m_alarmBanner);
     }
     m_alarmBlink->stop();
+    if (m_alarmSoundTimer)
+        m_alarmSoundTimer->stop();
     stopMelody();
     if (m_btnPlay && m_btnPlay->isCheckable())
         m_btnPlay->setEnabled(true);
 
+}
+
+void MainWindow::onAlarmSoundTimeout()
+{
+    if (!m_alarming)
+        return;
+    stopMelody();
+    log(QString("<b>[报警]</b> 蜂鸣器已按配置响满 %1 秒, 自动静音").arg(m_cfg.alarmSoundSeconds));
 }
 
 /* 循环警报音: “哔哔哔——哔” */

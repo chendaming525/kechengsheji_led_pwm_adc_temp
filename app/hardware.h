@@ -10,6 +10,7 @@ struct HardwareConfig
     bool simulation;
     double tempThreshold;
     double tempHysteresis;
+    int alarmSoundSeconds;
     int adcMax;
     bool loadFrom(const QString &file);
 };

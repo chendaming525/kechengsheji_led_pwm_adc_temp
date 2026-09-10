@@ -3,7 +3,7 @@
 #include <QSettings>
 
 HardwareConfig::HardwareConfig()
-    : simulation(true), tempThreshold(30.0), tempHysteresis(2.0), adcMax(4095)
+    : simulation(true), tempThreshold(30.0), tempHysteresis(2.0), alarmSoundSeconds(5), adcMax(4095)
 {
 }
 
@@ -13,6 +13,7 @@ bool HardwareConfig::loadFrom(const QString &file)
     simulation = s.value("system/simulation", simulation ? 1 : 0).toInt() != 0;
     tempThreshold = s.value("temperature/threshold", tempThreshold).toDouble();
     tempHysteresis = qMax(0.0, s.value("temperature/hysteresis", tempHysteresis).toDouble());
+    alarmSoundSeconds = qMax(1, s.value("alarm/sound_seconds", alarmSoundSeconds).toInt());
     adcMax = qMax(1, s.value("adc/max", adcMax).toInt());
     return QFile::exists(file);
 }
@@ -31,6 +32,10 @@ QString defaultConfigText()
         "; 高温报警阈值与回差（摄氏度），真实温度由 TCP 上报\n"
         "threshold=30.0\n"
         "hysteresis=2.0\n"
+        "\n"
+        "[alarm]\n"
+        "; 高温报警时蜂鸣器持续响多久（秒）\n"
+        "sound_seconds=5\n"
         "\n"
         "[adc]\n"
         "; ADC 满量程，用于余量显示换算\n"

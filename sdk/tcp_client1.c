@@ -260,6 +260,7 @@ int main(int argc, char **argv)
         int pre = 255;
         ioctl(pwm_fd, PWM_OFF);
         ioctl(pwm_fd, SET_PRE, &pre);
+        ioctl(pwm_fd, PWM_OFF);
     }
 
   if (pthread_mutex_init(&sock_mutex, NULL) != 0) {

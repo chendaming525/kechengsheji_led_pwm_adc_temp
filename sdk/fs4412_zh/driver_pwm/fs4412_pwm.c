@@ -83,11 +83,12 @@ static long fs4412_pwm_ioctl(struct file *file, unsigned int cmd, unsigned long 
 	case SET_PRE:
 		// 设置寄存器TCFG0的值，低八位先清零，在根据应用程序数据传过来的数据进行低八位设置
 		writel((readl(pwm->timer_base + TCFG0) & ~0xff) | (data & 0xff), pwm->timer_base + TCFG0);
-		writel((readl(pwm->timer_base + TCON) & ~0xf) | 0x9, pwm->timer_base + TCON); // 定时器开启，并启用自动重载
 		break;
 	case SET_CNT:
 		writel(data, pwm->timer_base + TCNTB0);		// 设置pwm定时器的初值
 		writel(data / 2, pwm->timer_base + TCMPB0); // 设置pwm定时器的翻转值
+		writel((readl(pwm->timer_base + TCON) & ~0xf) | 0x2, pwm->timer_base + TCON); // 手动更新, 装载TCNTB0和TCMPB0
+		writel(readl(pwm->timer_base + TCON) & ~0x2, pwm->timer_base + TCON);
 		break;
 	}
 

@@ -50,6 +50,7 @@ private slots:
 
     void onMelodyTick();               // 旋律定时步进(门铃/警报通用)
     void onAlarmBlink();               // 报警灯闪烁
+    void onAlarmSoundTimeout();        // 报警蜂鸣器到时停止
 
     void onTempPoll();                 // 定时读 DS18B20
     void onThresholdChanged(double v); // 阈值改动立即重新判断
@@ -120,6 +121,7 @@ private:
     bool     m_alarming;
     QTimer  *m_tempTimer;
     QTimer  *m_alarmBlink;
+    QTimer  *m_alarmSoundTimer;
     bool     m_blinkOn;
 
     // ---- 界面部件 ----
