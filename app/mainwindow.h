@@ -23,6 +23,10 @@ class QTcpSocket;
 class QTimeEdit;
 class QListWidget;
 
+namespace Ui {
+class MainWindow;
+}
+
 // 宠物喂食提醒上位机：食盆余量、LED 开关、音乐与温度报警。
 class MainWindow : public QMainWindow
 {
@@ -58,6 +62,8 @@ private slots:
     void onTcpDisconnected();          // 下位机断开
 
 private:
+    Ui::MainWindow *ui;
+
     void buildUi();                    // 搭建界面
     void applyStyle();                 // QSS 美化
     void loadConfig();                 // 读取/生成 config.ini

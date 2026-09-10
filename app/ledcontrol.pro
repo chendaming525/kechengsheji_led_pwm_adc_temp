@@ -25,7 +25,8 @@ HEADERS += \
     mainwindow.h \
     hardware.h
 
-# 界面全部在代码中搭建(QSS 内嵌), 不再使用 .ui 文件
+FORMS += \
+    mainwindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

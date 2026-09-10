@@ -1,4 +1,5 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
+#include "ui_mainwindow.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -11,26 +12,18 @@
 #include <QSlider>
 #include <QProgressBar>
 #include <QTextEdit>
-#include <QFrame>
-#include <QHBoxLayout>
-#include <QVBoxLayout>
-#include <QGridLayout>
 #include <QTimer>
 #include <QDateTime>
 #include <QTime>
 #include <QTimeEdit>
 #include <QListWidget>
 #include <QSettings>
-#include <QScrollArea>
 #include <QDir>
 #include <QFile>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QAbstractSocket>
 #include <QHostAddress>
-#include <QPainter>
-#include <QRadialGradient>
-#include <QPolygon>
 
 #include <cmath>
 
@@ -83,6 +76,7 @@ static void dbg(const QString &s)
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
+      ui(new Ui::MainWindow),
       m_lightOn(false),
       m_foodPercent(50),
       m_playing(false),
@@ -141,6 +135,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    delete ui;
 }
 
 /* ---------------- 配置 ---------------- */
@@ -168,289 +163,89 @@ void MainWindow::loadConfig()
 
 /* ---------------- 界面搭建 ---------------- */
 
-static QLabel *mkLabel(const QString &text, const char *objName)
-{
-    QLabel *l = new QLabel(text);
-    l->setObjectName(objName);
-    l->setWordWrap(true);
-    return l;
-}
-
 void MainWindow::buildUi()
 {
-    dbg("buildUi: 设置窗口");
-    setWindowTitle("宠物喂食提醒控制器");
-    resize(1180, 860);
-    setMinimumSize(1020, 760);
+    dbg("buildUi: setupUi(mainwindow.ui)");
+    ui->setupUi(this);
 
-    QWidget *root = new QWidget(this);
-    root->setObjectName("root");
-    QScrollArea *scroll = new QScrollArea(this);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setWidget(root);
-    setCentralWidget(scroll);
+    ui->leftCard->setObjectName("card");
+    ui->midCard->setObjectName("card");
+    ui->rightCard->setObjectName("card");
+    ui->scheduleCard->setObjectName("card");
+    ui->musicCard->setObjectName("card");
+    ui->leftTitle->setObjectName("sectionTitle");
+    ui->midTitle->setObjectName("sectionTitle");
+    ui->rightTitle->setObjectName("sectionTitle");
+    ui->scheduleTitle->setObjectName("sectionTitle");
+    ui->musicTitle->setObjectName("sectionTitle");
+    ui->statusFood->setObjectName("statusText");
+    ui->statusLight->setObjectName("statusText");
+    ui->statusSchedule->setObjectName("statusText");
+    ui->statusMusic->setObjectName("statusText");
+    ui->lightHint->setObjectName("hintLabel");
+    ui->adcHint->setObjectName("hintLabel");
+    ui->feedHint->setObjectName("hintLabel");
+    ui->scheduleHint->setObjectName("hintLabel");
+    ui->musicHint->setObjectName("hintLabel");
+    ui->m_adcBar->setObjectName("adcBar");
+    ui->m_adcValLabel->setObjectName("tankPercent");
+    ui->m_btnLight->setObjectName("btnLight");
+    ui->m_stateLabel->setObjectName("stateLabel");
+    ui->m_adcTip->setObjectName("chip");
+    ui->m_adcBarSmall->setObjectName("adcBarSmall");
+    ui->m_spinFoodLevel->setObjectName("spinFoodLevel");
+    ui->m_sliderFoodLevel->setObjectName("sliderFoodLevel");
+    ui->m_chkAuto->setObjectName("chkAuto");
+    ui->m_btnFoodReminder->setObjectName("btnFoodReminder");
+    ui->m_btnPlay->setObjectName("btnPlay");
+    ui->m_feedCountL->setObjectName("feedCount");
+    ui->m_scheduleTime->setObjectName("scheduleTime");
+    ui->m_scheduleList->setObjectName("scheduleList");
+    ui->m_scheduleStatus->setObjectName("statusChip");
+    ui->m_log->setObjectName("logBox");
+    ui->m_tipLabel->setObjectName("tipLabel");
+    ui->currentTime->setObjectName("chip");
+    ui->musicState->setObjectName("statusChip");
+    ui->m_btnMusic->setObjectName("btnPlay");
 
-    auto *rootLay = new QVBoxLayout(root);
-    rootLay->setSizeConstraint(QLayout::SetMinimumSize);
-    rootLay->setContentsMargins(24, 18, 24, 16);
-    rootLay->setSpacing(14);
+    m_adcBar = ui->m_adcBar;
+    m_adcValLabel = ui->m_adcValLabel;
+    m_btnLight = ui->m_btnLight;
+    m_stateLabel = ui->m_stateLabel;
+    m_adcTip = ui->m_adcTip;
+    m_adcBarSmall = ui->m_adcBarSmall;
+    m_spinFoodLevel = ui->m_spinFoodLevel;
+    m_sliderFoodLevel = ui->m_sliderFoodLevel;
+    m_chkAuto = ui->m_chkAuto;
+    m_btnFoodReminder = ui->m_btnFoodReminder;
+    m_btnPlay = ui->m_btnPlay;
+    m_feedCountL = ui->m_feedCountL;
+    m_scheduleTime = ui->m_scheduleTime;
+    m_currentTime = ui->currentTime;
+    m_scheduleList = ui->m_scheduleList;
+    m_scheduleStatus = ui->m_scheduleStatus;
+    m_btnMusic = ui->m_btnMusic;
+    m_log = ui->m_log;
+    m_tipLabel = ui->m_tipLabel;
 
-    auto *title = mkLabel("宠物喂食提醒控制器", "appTitle");
-    title->setAlignment(Qt::AlignCenter);
-    rootLay->addWidget(title);
-
-    auto *statusRow = new QHBoxLayout();
-    statusRow->addWidget(mkLabel("食盆余量监测(ADC)", "statusText"));
-    statusRow->addWidget(mkLabel("余量不足灯光提醒", "statusText"));
-    statusRow->addWidget(mkLabel("定时喂食", "statusText"));
-    statusRow->addWidget(mkLabel("到点播放提示音乐(PWM)", "statusText"));
-    statusRow->addStretch();
-    rootLay->addLayout(statusRow);
-
-    auto *mainGrid = new QGridLayout();
-    mainGrid->setSpacing(16);
-    mainGrid->setColumnStretch(0, 1);
-    mainGrid->setColumnStretch(1, 1);
-    mainGrid->setColumnStretch(2, 1);
-
-    /* 左侧：食盆余量 */
-    auto *leftCard = new QFrame();
-    leftCard->setObjectName("card");
-    auto *leftLay = new QVBoxLayout(leftCard);
-    leftLay->setSizeConstraint(QLayout::SetMinimumSize);
-    leftLay->setContentsMargins(18, 16, 18, 16);
-    leftLay->setSpacing(14);
-
-    auto *leftTitle = mkLabel("食盆 · 余量显示", "sectionTitle");
-    leftLay->addWidget(leftTitle);
-
-    auto *tank = new QFrame();
-    tank->setObjectName("foodTank");
-    tank->setMinimumHeight(180);
-    tank->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    auto *tankLay = new QVBoxLayout(tank);
-    tankLay->setSizeConstraint(QLayout::SetMinimumSize);
-    tankLay->setContentsMargins(18, 18, 18, 18);
-    tankLay->setSpacing(8);
-
-    m_adcBar = new QProgressBar();
-    m_adcBar->setObjectName("adcBar");
-    m_adcBar->setRange(0, 100);
-    m_adcBar->setValue(62);
-    m_adcBar->setTextVisible(false);
-    m_adcBar->setAlignment(Qt::AlignCenter);
-    m_adcBar->setMinimumHeight(64);
-    m_adcBar->setMaximumHeight(100);
-    m_adcBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    //m_adcBar->setStyleSheet("QProgressBar#adcBar { border: 0; background: rgba(255,255,255,0.08); border-radius: 22px; } QProgressBar#adcBar::chunk { background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 #d9a34a, stop:1 #b97819); border-radius: 22px; }");
-    tankLay->addWidget(m_adcBar);
-
-    m_adcValLabel = mkLabel("62%", "tankPercent");
-    m_adcValLabel->setWordWrap(false);
-    m_adcValLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    m_adcValLabel->setAlignment(Qt::AlignCenter);
-    tankLay->addWidget(m_adcValLabel);
-    leftLay->addWidget(tank);
-
-    m_btnLight = new QPushButton("打开提醒灯");
-    m_btnLight->setObjectName("btnLight");
-    m_btnLight->setCheckable(true);
     m_btnLight->setCursor(Qt::PointingHandCursor);
-    leftLay->addWidget(m_btnLight);
+    m_scheduleTime->setTime(QTime::currentTime().addSecs(60));
+    m_auto = true;    // 默认开启: 余量 <=20% 自动点亮提醒灯
 
-    m_stateLabel = mkLabel("● 余量充足", "stateLabel");
-    m_stateLabel->setAlignment(Qt::AlignCenter);
-    leftLay->addWidget(m_stateLabel);
-    leftLay->addWidget(mkLabel("提醒灯状态：正常", "hintLabel"));
-
-    mainGrid->addWidget(leftCard, 0, 0);
-    dbg("buildUi: 左卡(食盆)完成");
-
-    /* 中间：ADC 余量检测 */
-    auto *midCard = new QFrame();
-    midCard->setObjectName("card");
-    auto *midLay = new QVBoxLayout(midCard);
-    midLay->setContentsMargins(18, 16, 18, 16);
-    midLay->setSpacing(14);
-
-    auto *midTitle = mkLabel("食盆余量 · ADC (电位器)", "sectionTitle");
-    midLay->addWidget(midTitle);
-    auto *adcHead = new QHBoxLayout();
-    m_adcTip = mkLabel("食盆余量检测 AIN3", "chip");
-    adcHead->addWidget(m_adcTip);
-    adcHead->addStretch();
-    midLay->addLayout(adcHead);
-
-    m_adcBarSmall = new QProgressBar();
-    m_adcBarSmall->setObjectName("adcBarSmall");
-    m_adcBarSmall->setFixedHeight(18);
-    m_adcBarSmall->setRange(0, 100);
-    m_adcBarSmall->setValue(62);
-    m_adcBarSmall->setTextVisible(false);
-    midLay->addWidget(m_adcBarSmall);
-
-    auto *adcSliderRow = new QHBoxLayout();
-    auto *adcLabel = mkLabel("模拟电位器", "ctlTitle");
-    adcSliderRow->addWidget(adcLabel);
-    m_spinFoodLevel = new QSpinBox();
-    m_spinFoodLevel->setObjectName("spinFoodLevel");
-    m_spinFoodLevel->setRange(0, 100);
-    m_spinFoodLevel->setValue(62);
-    m_spinFoodLevel->setSuffix(" %");
-    m_spinFoodLevel->setMinimumWidth(90);
-    adcSliderRow->addWidget(m_spinFoodLevel);
-    m_sliderFoodLevel = new QSlider(Qt::Horizontal);
-    m_sliderFoodLevel->setObjectName("sliderFoodLevel");
-    m_sliderFoodLevel->setRange(0, 100);
-    m_sliderFoodLevel->setValue(62);
-    adcSliderRow->addWidget(m_sliderFoodLevel, 1);
-    midLay->addLayout(adcSliderRow);
-
-    auto *adcHint = mkLabel("模拟电位器: raw=0x100/4095，电压 = 1.8V", "hintLabel");
-    midLay->addWidget(adcHint);
-
-    auto *adcLow = new QHBoxLayout();
-    m_chkAuto = new QPushButton("余量不足提醒");
-    m_chkAuto->setObjectName("chkAuto");
-    m_chkAuto->setCheckable(true);
-    m_chkAuto->setChecked(true);
-    m_auto = true;    // 默认开启: 余量 ≤20% 自动点亮提醒灯
-    adcLow->addWidget(m_chkAuto);
-    m_btnFoodReminder = new QPushButton("余量提醒");
-    m_btnFoodReminder->setObjectName("btnFoodReminder");
-    adcLow->addWidget(m_btnFoodReminder);
-    midLay->addLayout(adcLow);
-
-    mainGrid->addWidget(midCard, 0, 1);
-    dbg("buildUi: 中卡(ADC)完成");
-
-    /* 右侧：手动喂食 */
-    auto *rightCard = new QFrame();
-    rightCard->setObjectName("card");
-    auto *rightLay = new QVBoxLayout(rightCard);
-    rightLay->setContentsMargins(18, 16, 18, 16);
-    rightLay->setSpacing(14);
-
-    auto *rightTitle = mkLabel("手动喂食", "sectionTitle");
-    rightLay->addWidget(rightTitle);
-
-    m_btnPlay = new QPushButton("立即喂食");
-    m_btnPlay->setObjectName("btnPlay");
-    m_btnPlay->setCheckable(false);
-    m_btnPlay->setMinimumHeight(64);
-    rightLay->addWidget(m_btnPlay);
-
-    m_feedCountL = mkLabel("今日喂食 0 次", "feedCount");
-    m_feedCountL->setAlignment(Qt::AlignCenter);
-    rightLay->addWidget(m_feedCountL);
-
-    auto *feedHint = mkLabel("根据剩余量和提醒时间，按需手动补充食物。", "hintLabel");
-    feedHint->setWordWrap(true);
-    rightLay->addWidget(feedHint);
-    mainGrid->addWidget(rightCard, 0, 2);
-    dbg("buildUi: 右卡(手动喂食)完成");
-
-    rootLay->addLayout(mainGrid, 1);
-
-    /* 下层：定时喂食 + 音乐模块 */
-    auto *bottomGrid = new QGridLayout();
-    bottomGrid->setSpacing(16);
-    bottomGrid->setColumnStretch(0, 1);
-    bottomGrid->setColumnStretch(1, 1);
-
-    auto *scheduleCard = new QFrame();
-    scheduleCard->setObjectName("card");
-    auto *scheduleLay = new QVBoxLayout(scheduleCard);
-    scheduleLay->setContentsMargins(18, 16, 18, 16);
-    scheduleLay->setSpacing(12);
-
-    auto *scheduleTitle = mkLabel("定时喂食", "sectionTitle");
-    scheduleLay->addWidget(scheduleTitle);
-
-    auto *timeRow = new QHBoxLayout();
-    m_scheduleTime = new QTimeEdit(QTime::currentTime().addSecs(60));
-    m_scheduleTime->setObjectName("scheduleTime");
-    m_scheduleTime->setDisplayFormat("HH:mm");
-    m_scheduleTime->setMinimumWidth(110);
-    timeRow->addWidget(m_scheduleTime);
-    timeRow->addStretch();
-    m_currentTime = mkLabel("", "chip");
-    timeRow->addWidget(m_currentTime);
-    scheduleLay->addLayout(timeRow);
-
-    m_scheduleList = new QListWidget();
-    m_scheduleList->setObjectName("scheduleList");
-    m_scheduleList->setMaximumHeight(80);
-    scheduleLay->addWidget(m_scheduleList);
-
-    auto *timeButtons = new QHBoxLayout();
-    auto *addBtn = new QPushButton("+ 添加");
-    auto *delBtn = new QPushButton("删除");
-    auto *clearBtn = new QPushButton("清空");
-    timeButtons->addWidget(addBtn);
-    timeButtons->addWidget(delBtn);
-    timeButtons->addWidget(clearBtn);
-    scheduleLay->addLayout(timeButtons);
-    connect(addBtn, SIGNAL(clicked()), this, SLOT(onAddSchedule()));
-    connect(delBtn, SIGNAL(clicked()), this, SLOT(onDeleteSchedule()));
-    connect(clearBtn, SIGNAL(clicked()), this, SLOT(onClearSchedule()));
-
-    auto *scheduleState = new QHBoxLayout();
-    m_scheduleStatus = mkLabel("", "statusChip");
-    scheduleState->addWidget(m_scheduleStatus);
-    scheduleState->addWidget(mkLabel("每天到点播放音乐", "hintLabel"));
-    scheduleLay->addLayout(scheduleState);
+    connect(ui->addScheduleButton, SIGNAL(clicked()), this, SLOT(onAddSchedule()));
+    connect(ui->deleteScheduleButton, SIGNAL(clicked()), this, SLOT(onDeleteSchedule()));
+    connect(ui->clearScheduleButton, SIGNAL(clicked()), this, SLOT(onClearSchedule()));
     refreshSchedule();
 
-    bottomGrid->addWidget(scheduleCard, 0, 0);
-
-    auto *musicCard = new QFrame();
-    musicCard->setObjectName("card");
-    auto *musicLay = new QVBoxLayout(musicCard);
-    musicLay->setContentsMargins(18, 16, 18, 16);
-    musicLay->setSpacing(12);
-
-    auto *musicTitle = mkLabel("音乐模块 · PWM", "sectionTitle");
-    musicLay->addWidget(musicTitle);
-
-    m_btnMusic = new QPushButton("试听喂食提示音乐");
-    m_btnMusic->setObjectName("btnPlay");
-    m_btnMusic->setMinimumHeight(52);
-    musicLay->addWidget(m_btnMusic);
-
-    auto *musicState = mkLabel("空闲", "statusChip");
-    musicLay->addWidget(musicState);
-
-    auto *musicHint = mkLabel("播放为“叮咚”提示音，提醒宠物按时进食。", "hintLabel");
-    musicHint->setWordWrap(true);
-    musicLay->addWidget(musicHint);
-
-    bottomGrid->addWidget(musicCard, 0, 1);
-    dbg("buildUi: 底部(定时/音乐)完成");
-    rootLay->addLayout(bottomGrid, 1);
-
-    m_log = new QTextEdit();
-    m_log->setObjectName("logBox");
-    m_log->setReadOnly(true);
-    m_log->setMinimumHeight(120);
-    rootLay->addWidget(m_log);
-
-    m_tipLabel = mkLabel("宠物喂食提醒控制器 · 食盆余量检测、LED 提醒与音乐提示", "tipLabel");
-    m_tipLabel->setAlignment(Qt::AlignCenter);
-    rootLay->addWidget(m_tipLabel);
-
-    /* ---------- 信号连接 ---------- */
     connect(m_btnLight, SIGNAL(toggled(bool)), this, SLOT(onLightToggled(bool)));
     connect(m_spinFoodLevel, SIGNAL(valueChanged(int)), this, SLOT(onSpinChanged(int)));
     connect(m_sliderFoodLevel, SIGNAL(valueChanged(int)), this, SLOT(onSliderChanged(int)));
     connect(m_btnFoodReminder, SIGNAL(clicked()), this, SLOT(onApplyFoodLevel()));
     connect(m_spinFoodLevel, SIGNAL(editingFinished()), this, SLOT(onApplyFoodLevel()));
     connect(m_sliderFoodLevel, SIGNAL(sliderReleased()), this, SLOT(onApplyFoodLevel()));
-    connect(m_btnPlay, SIGNAL(clicked()), this, SLOT(onFeedClicked())); // 立即喂食
-    connect(m_btnMusic, SIGNAL(clicked()), this, SLOT(onPlayClicked())); // 试听音乐
-    if (m_chkAuto)
-        connect(m_chkAuto, SIGNAL(toggled(bool)), this, SLOT(onAutoToggled(bool)));
+    connect(m_btnPlay, SIGNAL(clicked()), this, SLOT(onFeedClicked()));
+    connect(m_btnMusic, SIGNAL(clicked()), this, SLOT(onPlayClicked()));
+    connect(m_chkAuto, SIGNAL(toggled(bool)), this, SLOT(onAutoToggled(bool)));
     if (m_chkAlarm)
         connect(m_chkAlarm, SIGNAL(toggled(bool)), this, SLOT(onAlarmToggle(bool)));
     if (m_spinTemp)
@@ -468,7 +263,7 @@ void MainWindow::buildUi()
     m_tempTimer = new QTimer(this);
     m_tempTimer->setInterval(1500);
     connect(m_tempTimer, SIGNAL(timeout()), this, SLOT(onTempPoll()));
-    if (m_tempVal)            // 喂食版界面没有温度卡片, 不轮询温度(否则会误触发高温报警崩溃)
+    if (m_tempVal)            // 喂食版界面没有温度卡片, 不轮询温度
         m_tempTimer->start();
 
     m_alarmBlink = new QTimer(this);
@@ -479,7 +274,6 @@ void MainWindow::buildUi()
     m_melodyTimer->setInterval(140);
     connect(m_melodyTimer, SIGNAL(timeout()), this, SLOT(onMelodyTick()));
 
-    dbg("buildUi: 定时器完成, 即将调用 refreshFoodLevel");
     refreshFoodLevel();
     dbg("buildUi: 余量显示更新完成");
 }
