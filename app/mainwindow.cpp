@@ -59,6 +59,20 @@ static QString htmlEscape(QString s)
     return s;
 }
 
+static QString socketStateName(QAbstractSocket::SocketState state)
+{
+    switch (state) {
+    case QAbstractSocket::UnconnectedState: return "Unconnected";
+    case QAbstractSocket::HostLookupState:  return "HostLookup";
+    case QAbstractSocket::ConnectingState:  return "Connecting";
+    case QAbstractSocket::ConnectedState:   return "Connected";
+    case QAbstractSocket::BoundState:       return "Bound";
+    case QAbstractSocket::ListeningState:   return "Listening";
+    case QAbstractSocket::ClosingState:     return "Closing";
+    }
+    return "Unknown";
+}
+
 /* ============================================================
  * 启动调试日志: 同时输出到 Qt Creator 应用程序输出(qDebug)
  * 和 exe 运行目录的 startup_debug.log(崩溃也能看到最后一步)
@@ -421,15 +435,39 @@ void MainWindow::onTcpDisconnected()
 
 void MainWindow::sendCommand(const QString &cmd)
 {
-    if (!m_client || m_client->state() != QAbstractSocket::ConnectedState) {
-        log(QString("<font color='#ffb86c'><b>[TCP]</b> 下位机未连接, 未发送: %1</font>").arg(cmd));
+    if (!m_client) {
+        log(QString("<font color='#ffb86c'><b>[TCP]</b> 下位机未连接, 未发送: %1, reason=no client</font>")
+                .arg(htmlEscape(cmd)));
         return;
     }
 
-    m_client->write(cmd.toUtf8());
-    m_client->write("\n");
-    m_client->flush();
-    log(QString("<b>[TCP → 下位机]</b> %1").arg(cmd));
+    const QString stateName = socketStateName(m_client->state());
+    if (m_client->state() != QAbstractSocket::ConnectedState) {
+        log(QString("<font color='#ffb86c'><b>[TCP]</b> 下位机未连接, 未发送: %1, state=%2, error=%3</font>")
+                .arg(htmlEscape(cmd))
+                .arg(stateName)
+                .arg(htmlEscape(m_client->errorString())));
+        return;
+    }
+
+    QByteArray line = cmd.toUtf8();
+    line.append('\n');
+    const qint64 written = m_client->write(line);
+    const bool flushed = m_client->flush();
+    log(QString("<b>[TCP → 下位机]</b> %1 <font color='#8ed9b2'>(state=%2, bytes=%3/%4, flush=%5)</font>")
+            .arg(htmlEscape(cmd))
+            .arg(stateName)
+            .arg(qlonglong(written))
+            .arg(line.size())
+            .arg(flushed ? "ok" : "pending"));
+
+    if (written != line.size()) {
+        log(QString("<font color='#ffb86c'><b>[TCP]</b> 写入字节数异常: cmd=%1, bytes=%2/%3, error=%4</font>")
+                .arg(htmlEscape(cmd))
+                .arg(qlonglong(written))
+                .arg(line.size())
+                .arg(htmlEscape(m_client->errorString())));
+    }
 }
 
 void MainWindow::handleLowerMessage(const QString &msg)
@@ -634,7 +672,20 @@ void MainWindow::onFeedClicked()
     log(QString("<b>[手动喂食]</b> %1 触发, 食盆余量回满 100%")
             .arg(now.toString("HH:mm:ss")));
 
-    // 喂食成功短提示音(音乐模块): 嘀嘀
+    QString tcpState = "no client";
+    if (m_client) {
+        tcpState = QString("%1, peer=%2:%3, error=%4")
+            .arg(socketStateName(m_client->state()))
+            .arg(m_client->peerAddress().toString())
+            .arg(m_client->peerPort())
+            .arg(m_client->errorString());
+    }
+    log(QString("<b>[手动喂食]</b> 调试: simulation=%1, alarming=%2, tcp=%3")
+            .arg(m_cfg.simulation ? "1(PC模拟)" : "0(真机)")
+            .arg(m_alarming ? "true" : "false")
+            .arg(htmlEscape(tcpState)));
+
+    // 喂食成功短提示音: 模拟模式 PC 嘀一声; 真机模式下发 BUZZER_FREQ/BUZZER_OFF 测试蜂鸣器。
     if (m_melodyTimer && m_melodyTimer->isActive())
         stopMelody();
     m_playing = true;
@@ -643,6 +694,8 @@ void MainWindow::onFeedClicked()
     m_beeped = false;
     m_melody.clear();
     m_melody << 1046 << 1046 << 0 << 0 << 0;
+    log(QString("<b>[蜂鸣器测试]</b> 准备短响测试: freq=1046Hz, interval=%1ms, sequence=1046,1046,0,0,0")
+            .arg(m_melodyTimer ? m_melodyTimer->interval() : 0));
     onMelodyTick();
     m_melodyTimer->start();
 }

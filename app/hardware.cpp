@@ -1,20 +1,31 @@
 #include "hardware.h"
 #include <QFile>
+#include <QFileInfo>
+#include <QDebug>
 #include <QSettings>
 
 HardwareConfig::HardwareConfig()
-    : simulation(true), tempThreshold(30.0), tempHysteresis(2.0), alarmSoundSeconds(5), adcMax(4095)
+    : simulation(false), tempThreshold(30.0), tempHysteresis(2.0), alarmSoundSeconds(5), adcMax(4095)
 {
 }
 
 bool HardwareConfig::loadFrom(const QString &file)
 {
+    QFileInfo info(file);
+    qDebug() << "[config] loadFrom path =" << info.absoluteFilePath()
+             << "exists =" << info.exists();
+
     QSettings s(file, QSettings::IniFormat);
     simulation = s.value("system/simulation", simulation ? 1 : 0).toInt() != 0;
     tempThreshold = s.value("temperature/threshold", tempThreshold).toDouble();
     tempHysteresis = qMax(0.0, s.value("temperature/hysteresis", tempHysteresis).toDouble());
     alarmSoundSeconds = qMax(1, s.value("alarm/sound_seconds", alarmSoundSeconds).toInt());
     adcMax = qMax(1, s.value("adc/max", adcMax).toInt());
+    qDebug() << "[config] loaded simulation =" << simulation
+             << "threshold =" << tempThreshold
+             << "hysteresis =" << tempHysteresis
+             << "alarmSoundSeconds =" << alarmSoundSeconds
+             << "adcMax =" << adcMax;
     return QFile::exists(file);
 }
 
@@ -26,7 +37,7 @@ QString defaultConfigText()
         "\n"
         "[system]\n"
         "; 1 = PC 模拟演示，0 = 连接真实开发板\n"
-        "simulation=1\n"
+        "simulation=0\n"
         "\n"
         "[temperature]\n"
         "; 高温报警阈值与回差（摄氏度），真实温度由 TCP 上报\n"
